@@ -1,0 +1,840 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Xray-Pulse</title>
+<style>
+:root{
+  --bg:#f6f7f9;
+  --surface:#ffffff;
+  --surface-alt:#f8fafc;
+  --ink:#111827;
+  --ink2:#6b7280;
+  --ink3:#9ca3af;
+  --border:#e5e7eb;
+  --border-strong:#d1d5db;
+  --accent:#0f172a;
+  --down:#2563eb;
+  --up:#e11d48;
+  --ok:#10b981;
+  --warn:#dc2626;
+  --sans:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Hiragino Sans GB","Microsoft YaHei","Helvetica Neue",Arial,sans-serif;
+  --mono:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,"Liberation Mono",monospace;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{
+  font-family:var(--sans);
+  color:var(--ink);
+  min-height:100vh;
+  background:var(--bg);
+  -webkit-font-smoothing:antialiased;
+  overflow-x:hidden;
+}
+.mono,.serif{font-family:var(--mono);font-variant-numeric:tabular-nums}
+.wrap{width:100%;max-width:1440px;margin:0 auto;padding:20px 20px 56px}
+
+.paper{
+  background:var(--surface);
+  border:1px solid var(--border);
+  border-radius:10px;
+  padding:18px 20px;
+  box-shadow:0 1px 2px rgba(16,24,40,.04);
+}
+
+header.paper{
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  flex-wrap:wrap;
+  gap:12px;
+  margin-bottom:16px;
+  padding:14px 20px;
+}
+.logo{display:flex;align-items:center;gap:12px}
+.logo-mark{
+  width:36px;height:36px;border-radius:8px;
+  background:var(--accent);color:#fff;
+  display:flex;align-items:center;justify-content:center;flex-shrink:0;
+}
+.logo h1{font-size:17px;font-weight:600;letter-spacing:-.01em;color:var(--ink);line-height:1.2}
+.logo p{font-size:12px;color:var(--ink2);margin-top:2px;letter-spacing:.04em}
+.chip{
+  font-size:12px;
+  color:var(--ink2);
+  background:var(--surface-alt);
+  padding:3px 9px;
+  border:1px solid var(--border);
+  border-radius:6px;
+  font-family:var(--mono);
+  font-variant-numeric:tabular-nums;
+}
+
+.stats{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:16px}
+@media(max-width:900px){.stats{grid-template-columns:repeat(2,1fr)}}
+.stat{padding:15px 18px}
+.stat .k{font-size:12.5px;color:var(--ink2);font-weight:500}
+.stat .v{
+  font-family:var(--mono);
+  font-variant-numeric:tabular-nums;
+  font-size:24px;
+  margin-top:6px;
+  font-weight:600;
+  letter-spacing:-.02em;
+  line-height:1.2;
+}
+.stat .v small{font-size:13.5px;font-weight:500;color:var(--ink2)}
+
+.grid{display:grid;grid-template-columns:minmax(0,1.65fr) minmax(360px,1.05fr);gap:16px;align-items:stretch}
+.panel-clients{grid-column:1;grid-row:1 / span 2;min-height:520px;display:flex;flex-direction:column}
+.panel-bans{grid-column:2;grid-row:1;display:flex;flex-direction:column}
+.panel-speed{grid-column:2;grid-row:2;display:flex;flex-direction:column}
+@media(max-width:1020px){
+  .wrap{padding:14px 12px 48px}
+  .grid{display:flex;flex-direction:column;gap:14px}
+  .panel-clients{order:1;min-height:auto}
+  .panel-speed{order:2}
+  .panel-bans{order:3}
+}
+
+.h{font-size:15px;font-weight:600;color:var(--ink);display:flex;align-items:center;gap:8px}
+.hrow{display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:12px}
+.panel-bans .h{margin-bottom:12px}
+.list{flex:1;max-height:520px;overflow-y:auto;padding-right:2px}
+.bans-list{height:178px;overflow-y:auto;padding-right:2px;display:flex;flex-direction:column}
+
+.row{
+  display:grid;
+  grid-template-columns:minmax(0,1.55fr) minmax(96px,.85fr) minmax(96px,.85fr) auto;
+  gap:12px;
+  align-items:center;
+  padding:11px 4px;
+  border-bottom:1px solid #f1f5f9;
+  transition:background .12s;
+}
+.row:hover{background:#fafbfc}
+.row:last-child{border-bottom:none}
+@media(max-width:760px){
+  .row{grid-template-columns:1fr 1fr;gap:8px;padding:12px 2px}
+  .row>div:first-child{grid-column:1/-1}
+  .row .acts{grid-column:1/-1;justify-content:flex-start;margin-top:2px}
+}
+
+.ip-line{display:flex;align-items:center;flex-wrap:wrap;gap:6px}
+.dot{width:7px;height:7px;border-radius:50%;flex-shrink:0;background:var(--ink3)}
+.row.on .dot{background:var(--ok);box-shadow:0 0 0 3px rgba(16,185,129,.16)}
+.ip{
+  font-family:var(--mono);
+  font-variant-numeric:tabular-nums;
+  font-size:13.5px;
+  font-weight:600;
+  color:var(--ink);
+  cursor:pointer;
+  border-bottom:1px dashed transparent;
+  transition:color .15s,border-color .15s;
+}
+.ip:hover{color:var(--down);border-bottom-color:var(--down)}
+.off .ip{color:var(--ink2)}
+.sub{font-size:12px;color:var(--ink2);margin-top:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;padding-left:13px}
+.ban .sub{padding-left:0}
+.tag{
+  font-size:11.5px;
+  font-weight:500;
+  padding:1px 7px;
+  border-radius:5px;
+  white-space:nowrap;
+  line-height:1.5;
+}
+.t-me{color:#92400e;background:#fef3c7}
+.t-cdn{color:#065f46;background:#d1fae5}
+.t-lim{color:#5b21b6;background:#ede9fe}
+.alias{
+  font-size:12.5px;
+  color:#0f766e;
+  cursor:pointer;
+  border-bottom:1px dashed rgba(15,118,110,.45);
+}
+.alias:hover{color:#0d9488}
+
+.m{
+  font-family:var(--mono);
+  font-variant-numeric:tabular-nums;
+  font-size:12.5px;
+  line-height:1.55;
+  white-space:nowrap;
+}
+.dn{color:var(--down)}.up{color:var(--up)}
+
+.btn{
+  font-family:inherit;
+  font-size:12.5px;
+  font-weight:500;
+  cursor:pointer;
+  padding:5px 11px;
+  background:var(--surface);
+  color:var(--ink);
+  border:1px solid var(--border-strong);
+  border-radius:6px;
+  transition:background .15s,border-color .15s,color .15s;
+  white-space:nowrap;
+  line-height:1.3;
+}
+.btn:hover{background:#f3f4f6;border-color:#9ca3af}
+.btn:disabled{opacity:.48;cursor:not-allowed;background:#f9fafb}
+.btn:disabled:hover{background:#f9fafb;border-color:var(--border-strong)}
+.btn.main{background:var(--accent);border-color:var(--accent);color:#fff}
+.btn.main:hover{background:#1e293b;border-color:#1e293b}
+.btn.soft{background:#eff6ff;border-color:#bfdbfe;color:#1d4ed8}
+.btn.soft:hover{background:#dbeafe;border-color:#93c5fd}
+.btn.warn{color:var(--warn);border-color:#fecaca;background:#fff}
+.btn.warn:hover{background:#fef2f2;border-color:#fca5a5}
+.acts{display:flex;gap:6px;justify-content:flex-end;flex-wrap:wrap}
+
+.inp{
+  flex:1;
+  width:100%;
+  font-family:inherit;
+  font-size:13.5px;
+  padding:7px 10px;
+  background:var(--surface);
+  color:var(--ink);
+  border:1px solid var(--border-strong);
+  border-radius:6px;
+  outline:none;
+  transition:border-color .15s,box-shadow .15s;
+}
+.inp:focus{border-color:var(--down);box-shadow:0 0 0 3px rgba(37,99,235,.12)}
+.ban{
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  gap:10px;
+  padding:10px 4px;
+  border-bottom:1px solid #f1f5f9;
+}
+.ban:last-child{border-bottom:none}
+.empty{text-align:center;color:var(--ink2);font-size:13px;padding:36px 0}
+
+.mask{
+  position:fixed;inset:0;z-index:50;
+  display:flex;align-items:center;justify-content:center;padding:16px;
+  background:rgba(15,23,42,.35);
+  backdrop-filter:blur(4px);-webkit-backdrop-filter:blur(4px);
+}
+.hidden{display:none!important}
+.dlg{width:100%;max-width:360px;padding:24px;border-radius:12px;box-shadow:0 20px 38px rgba(15,23,42,.16)}
+.dlg label{display:block;font-size:12.5px;font-weight:500;color:var(--ink2);margin:12px 0 6px}
+.dlg .h{margin-bottom:6px}
+.dlg-sub{font-family:var(--mono);font-size:13px;color:var(--ink2);margin-bottom:10px;display:block}
+#toast{
+  position:fixed;left:50%;bottom:24px;transform:translateX(-50%);z-index:60;
+  padding:8px 16px;
+  background:var(--accent);color:#f8fafc;
+  border-radius:8px;
+  box-shadow:0 10px 24px rgba(15,23,42,.2);
+  font-size:13px;font-weight:500;
+}
+::-webkit-scrollbar{width:6px;height:6px}
+::-webkit-scrollbar-thumb{background:#d1d5db;border-radius:999px}
+::-webkit-scrollbar-thumb:hover{background:#9ca3af}
+</style>
+</head>
+<body>
+
+<!-- 登录 -->
+<div id="boot" class="mask">
+  <div class="paper dlg" style="text-align:center;max-width:280px;padding:18px 20px">
+    <span id="bootText" style="font-size:13.5px;color:var(--ink2)">正在验证登录状态…</span>
+  </div>
+</div>
+<div id="login" class="mask hidden">
+  <div class="paper dlg">
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:16px">
+      <div class="logo-mark">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12h4l3-7 4 14 3-7h4"/></svg>
+      </div>
+      <div>
+        <h1 style="font-size:17px;font-weight:600;line-height:1.2">Xray-Pulse</h1>
+        <p style="font-size:12px;color:var(--ink2);margin-top:2px">流量监控与控制台</p>
+      </div>
+    </div>
+    <form id="loginForm">
+      <label for="lu">用户名</label><input id="lu" class="inp" autocomplete="username" required>
+      <label for="lp">密码</label><input id="lp" type="password" class="inp" autocomplete="current-password" required>
+      <p id="lerr" class="hidden" style="color:var(--warn);background:#fef2f2;border:1px solid #fecaca;border-radius:6px;padding:6px 10px;font-size:12.5px;text-align:center;margin-top:12px"></p>
+      <button class="btn main" style="width:100%;margin-top:18px;padding:8px 12px;font-size:13.5px">登录</button>
+    </form>
+  </div>
+</div>
+
+<div id="wrap" class="wrap hidden">
+  <header class="paper">
+    <div class="logo">
+      <div class="logo-mark">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12h4l3-7 4 14 3-7h4"/></svg>
+      </div>
+      <div><h1>Xray-Pulse</h1><p>流量监控与控制台</p></div>
+    </div>
+    <div style="display:flex;gap:8px;align-items:center"><span id="me" class="chip">—</span><button class="btn" onclick="logout()">退出</button></div>
+  </header>
+
+  <div class="stats">
+    <div class="paper stat">
+      <div class="k">在线 IP</div><div class="v"><span id="sOn">0</span> <small>/ <span id="sTotIps">0</span></small></div></div>
+    <div class="paper stat">
+      <div class="k">实时下行</div><div class="v dn" id="sDn">0 B/s</div></div>
+    <div class="paper stat">
+      <div class="k">实时上行</div><div class="v up" id="sUp">0 B/s</div></div>
+    <div class="paper stat">
+      <div class="k">累计流量</div><div class="v" id="sTot">0 B</div></div>
+  </div>
+
+  <div class="grid">
+    <div class="paper panel-clients">
+      <div class="hrow">
+        <div class="h">连接列表 <span id="cnt" class="chip">0</span></div>
+        <div style="display:flex;gap:8px;align-items:center">
+          <button class="btn" onclick="clearOffline()">清理离线</button>
+          <button class="btn" onclick="resetAllTraffic()">清空流量</button>
+        </div>
+      </div>
+      <div id="list" class="list"></div>
+    </div>
+    <div class="paper panel-speed">
+      <div class="hrow"><div class="h">实时速率</div>
+        <div style="font-size:12px;display:flex;align-items:center;gap:12px"><span class="dn">● 下行</span><span class="up">● 上行</span><span id="peak" class="mono" style="color:var(--ink2)"></span></div></div>
+      <svg id="chart" viewBox="0 0 720 210" preserveAspectRatio="none" style="width:100%;height:210px"></svg>
+    </div>
+    <div class="paper panel-bans">
+      <div class="h">黑名单 <span id="bcnt" class="chip">0</span></div>
+      <div style="display:flex;gap:8px;margin-bottom:8px"><input id="banIn" class="inp" placeholder="输入待封禁的 IP 地址"><button class="btn warn" onclick="manualBan()">封禁</button></div>
+      <div id="bans" class="bans-list"></div>
+    </div>
+  </div>
+</div>
+
+<!-- 限速 -->
+<div id="limitDlg" class="mask hidden" onclick="if(event.target===this)closeLimit()">
+  <div class="paper dlg">
+    <div class="h">带宽限速</div>
+    <span id="limIp" class="dlg-sub"></span>
+    <div id="cdnLimNotice" style="display:none;font-size:12px;color:#92400e;background:#fef3c7;border:1px solid #fde68a;padding:7px 10px;border-radius:6px;margin:8px 0;">提示：该 IP 为 CDN 节点用户，限速仅下行生效（上行由 Cloudflare 代理不受控）。</div>
+    <label for="limDn">下行 Mbps（0 为不限）</label><input id="limDn" type="number" min="0" step="0.1" class="inp">
+    <label for="limUp">上行 Mbps（0 为不限）</label><input id="limUp" type="number" min="0" step="0.1" class="inp">
+    <div style="display:flex;gap:8px;margin-top:20px">
+      <button class="btn main" style="flex:1" onclick="saveLimit()">保存</button>
+      <button class="btn" onclick="saveLimit(true)">解除</button>
+      <button class="btn" onclick="closeLimit()">取消</button>
+    </div>
+  </div>
+</div>
+<!-- 备注 -->
+<div id="aliasDlg" class="mask hidden" onclick="if(event.target===this)closeAlias()">
+  <div class="paper dlg">
+    <div class="h">客户端备注</div>
+    <span id="aliasIp" class="dlg-sub"></span>
+    <input id="aliasIn" class="inp" maxlength="32" placeholder="输入备注名（留空则清除）">
+    <div style="display:flex;gap:8px;margin-top:20px">
+      <button class="btn main" style="flex:1" onclick="saveAlias()">保存</button>
+      <button class="btn" onclick="closeAlias()">取消</button>
+    </div>
+  </div>
+</div>
+<div id="toast" class="hidden"></div>
+
+<script>
+const $=id=>document.getElementById(id);
+const fmtB=b=>{if(!b||b<=0)return'0 B';const u=['B','KB','MB','GB','TB'];const i=Math.min(Math.floor(Math.log(b)/Math.log(1024)),4);return(b/1024**i).toFixed(i?2:0)+' '+u[i]};
+const fmtR=b=>fmtB(b)+'/s';
+const pad=n=>String(n).padStart(2,'0');
+const fmtT=t=>{if(!t)return'—';const d=new Date(t*1000);return`${pad(d.getMonth()+1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`};
+const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+function toast(m){const t=$('toast');t.textContent=m;t.classList.remove('hidden');clearTimeout(t._h);t._h=setTimeout(()=>t.classList.add('hidden'),2200)}
+
+let myDetectedIps = [];
+window.currentViewerIp = '';
+
+const isIpFormat = (s) => {
+  if (!s || typeof s !== 'string' || s.endsWith('.local')) return false;
+  if (/^(?:\d{1,3}\.){3}\d{1,3}$/.test(s)) {
+    const parts = s.split('.').map(Number);
+    return parts.every(n => n >= 0 && n <= 255);
+  }
+  if (s.includes(':') && /^[0-9a-fA-F:]+$/.test(s)) {
+    if (s.includes(':::') || (s.match(/::/g) || []).length > 1) return false;
+    const groups = s.split(':').filter(Boolean);
+    return groups.length >= 2 && groups.length <= 8 && groups.every(g => g.length <= 4);
+  }
+  return false;
+};
+
+const isPublicIp = (ip) => {
+  if (!isIpFormat(ip)) return false;
+  const low = ip.toLowerCase();
+  if (low.startsWith('10.') || low.startsWith('192.168.') || low.startsWith('127.') || low.startsWith('169.254.') || low === '0.0.0.0') return false;
+  if (low.startsWith('172.')) {
+    const sec = parseInt(low.split('.')[1] || '0', 10);
+    if (sec >= 16 && sec <= 31) return false;
+  }
+  if (low.startsWith('100.')) {
+    const sec = parseInt(low.split('.')[1] || '0', 10);
+    if (sec >= 64 && sec <= 127) return false;
+  }
+  if (low === window.location.hostname) return false;
+  if (low === '::1' || low === '::' || low.startsWith('fe80:') || low.startsWith('fc') || low.startsWith('fd')) return false;
+  return true;
+};
+
+// 纯自动探测当前终端的真实公网 IP（支持双栈 IPv4/IPv6 多候选聚合，利用 WebRTC STUN 穿透代理直连）
+async function detectLocalRealIP(force = false) {
+  if (!force && myDetectedIps.length > 0) return myDetectedIps.join(',');
+  return new Promise((resolve) => {
+    let resolved = false;
+    const srflxSet = new Set();
+    const hostSet = new Set();
+    let earlyTimer = null;
+    let hardTimer = null;
+    let pc = null;
+
+    const cleanup = () => {
+      clearTimeout(earlyTimer);
+      clearTimeout(hardTimer);
+      earlyTimer = null;
+      hardTimer = null;
+      try { pc && pc.close(); } catch(e){}
+      pc = null;
+    };
+
+    const commitCandidates = () => {
+      const merged = [...srflxSet, ...[...hostSet].filter(x => !srflxSet.has(x))];
+      const prev = myDetectedIps.join(',');
+      if (merged.length > 0) {
+        myDetectedIps = merged;
+      }
+      const cur = myDetectedIps.join(',');
+      return { cur, changed: cur !== prev && cur.length > 0 };
+    };
+
+    const resolveOnce = () => {
+      const { cur, changed } = commitCandidates();
+      if (!resolved) {
+        resolved = true;
+        resolve(cur);
+      } else if (changed) {
+        refresh(true).catch(()=>{});
+      }
+    };
+
+    hardTimer = setTimeout(() => {
+      cleanup();
+      const { changed } = commitCandidates();
+      if (!resolved) {
+        resolved = true;
+        resolve(myDetectedIps.join(','));
+      } else if (changed) {
+        refresh(true);
+      }
+    }, 1800);
+
+    const RTCPc = window.RTCPeerConnection || window.webkitRTCPeerConnection;
+    if (!RTCPc) {
+      cleanup();
+      resolve('');
+      return;
+    }
+    try {
+      pc = new RTCPc({
+        iceServers: [
+          { urls: 'stun:stun.miwifi.com:3478' },
+          { urls: 'stun:stun.qq.com:3478' },
+          { urls: 'stun:stun.chat.bilibili.com:3478' },
+          { urls: 'stun:stun.cloudflare.com:3478' }
+        ]
+      });
+      pc.createDataChannel('ping');
+      pc.onicecandidate = (e) => {
+        if (!e || !e.candidate) {
+          cleanup();
+          resolveOnce();
+          return;
+        }
+        const str = e.candidate.candidate || '';
+        const parts = str.trim().split(/\s+/);
+        let candIp = '';
+        let candType = '';
+        if (parts.length >= 8) {
+          candIp = parts[4];
+          candType = parts[7];
+        } else {
+          const m = str.match(/\b(?:\d{1,3}\.){3}\d{1,3}\b/);
+          if (m) candIp = m[0];
+        }
+
+        if (isPublicIp(candIp)) {
+          if (candType === 'srflx' || str.includes('typ srflx')) {
+            const beforeSize = srflxSet.size;
+            srflxSet.add(candIp);
+            const hasV4 = [...srflxSet].some(x => x.includes('.'));
+            const hasV6 = [...srflxSet].some(x => x.includes(':'));
+            if (hasV4 && hasV6) {
+              clearTimeout(earlyTimer);
+              earlyTimer = null;
+              resolveOnce();
+            } else if (!earlyTimer) {
+              // 留出短暂窗口收集双栈另一地址族候选，随后立即放行首屏请求
+              earlyTimer = setTimeout(resolveOnce, 220);
+            } else if (resolved && srflxSet.size !== beforeSize) {
+              resolveOnce();
+            }
+          } else {
+            hostSet.add(candIp);
+          }
+        }
+      };
+      pc.createOffer().then(o => pc && pc.setLocalDescription(o)).catch(() => {
+        cleanup();
+        resolveOnce();
+      });
+    } catch(e) {
+      cleanup();
+      resolve('');
+    }
+  });
+}
+
+window.addEventListener('online', () => { detectLocalRealIP(true).then(() => refresh(true)).catch(()=>{}); });
+
+let _pollTimer = null;
+function startPolling(){ if(!_pollTimer) _pollTimer = setInterval(()=>refresh(false), 2000); }
+function stopPolling(){ if(_pollTimer){ clearInterval(_pollTimer); _pollTimer = null; } }
+function showBoot(message='正在验证登录状态…'){
+  $('bootText').textContent=message;
+  $('wrap').classList.add('hidden');
+  $('boot').classList.remove('hidden');
+}
+function clearSensitiveView(){
+  clients = {};
+  window.currentViewerIp = '';
+  $('me').textContent = '—';
+  $('sOn').textContent = '0'; $('sTotIps').textContent = '0';
+  $('sDn').textContent = '0 B/s'; $('sUp').textContent = '0 B/s'; $('sTot').textContent = '0 B';
+  $('cnt').textContent = '0';
+  $('list').innerHTML = '<div class="empty">暂无连接</div>';
+  renderBans([]);
+  drawChart([]);
+}
+
+let _authEpoch = 0;
+
+async function api(path,body){
+  const reqEpoch = _authEpoch;
+  const realHdr = myDetectedIps.length ? myDetectedIps.join(',') : '';
+  const h={'Content-Type':'application/json'};
+  if(realHdr) h['X-Client-Real-IP']=realHdr;
+  const opts=body===undefined?{credentials:'same-origin',headers:realHdr?{'X-Client-Real-IP':realHdr}:{}}:
+    {method:'POST',credentials:'same-origin',headers:h,body:JSON.stringify(body)};
+  const r=await fetch('api/'+path,opts);
+  if(r.status===401){
+    if(reqEpoch === _authEpoch){
+      _authEpoch++;
+      stopPolling();
+      clearSensitiveView();
+      $('boot').classList.add('hidden');
+      $('wrap').classList.add('hidden');
+      $('login').classList.remove('hidden');
+    }
+    throw new Error('401');
+  }
+  const d=await r.json().catch(()=>({}));
+  if(!r.ok){toast(d.detail||'操作失败');const err=new Error(d.detail||'操作失败');err.userNotified=true;throw err}
+  return d;
+}
+$('loginForm').addEventListener('submit',async e=>{
+  e.preventDefault();$('lerr').classList.add('hidden');
+  const realHdr = myDetectedIps.length ? myDetectedIps.join(',') : '';
+  const headers = {'Content-Type':'application/json'};
+  if (realHdr) headers['X-Client-Real-IP'] = realHdr;
+  try {
+    const r=await fetch('api/login',{method:'POST',credentials:'same-origin',headers,
+      body:JSON.stringify({username:$('lu').value.trim(),password:$('lp').value})});
+    const d=await r.json().catch(()=>({}));
+    if(!r.ok){$('lerr').textContent=d.detail||'登录失败';$('lerr').classList.remove('hidden');return}
+    _authEpoch++;
+    $('lp').value = '';
+    $('login').classList.add('hidden');
+    showBoot('正在载入控制台…');
+    await refresh(true);
+    if ($('login').classList.contains('hidden')) startPolling();
+  } catch(err) {
+    $('lerr').textContent='网络连接失败，请稍后重试';
+    $('lerr').classList.remove('hidden');
+    $('boot').classList.add('hidden');
+    $('login').classList.remove('hidden');
+  }
+});
+async function logout(){
+  try{
+    const r=await fetch('api/logout',{method:'POST',credentials:'same-origin'});
+    if(!r.ok && r.status!==401)throw new Error('logout failed');
+  }catch(e){toast('退出失败，请重试');return}
+  _authEpoch++;
+  stopPolling();
+  clearSensitiveView();
+  $('boot').classList.add('hidden');
+  $('wrap').classList.add('hidden');
+  $('login').classList.remove('hidden');
+}
+
+/* 速率曲线 */
+function makePath(arr, padLeft, w, h, baseY, max) {
+  if (arr.length < 2) return { line: `M${padLeft},${baseY} L${padLeft + w},${baseY}`, area: `M${padLeft},${baseY} L${padLeft + w},${baseY} Z` };
+  const step = w / (arr.length - 1);
+  const pts = arr.map((v, i) => [
+    padLeft + i * step,
+    baseY - Math.min(1, Math.max(0, v / max)) * h
+  ]);
+  let d = `M${pts[0][0].toFixed(1)},${pts[0][1].toFixed(1)}`;
+  for (let i = 1; i < pts.length; i++) {
+    const [x0, y0] = pts[i - 1], [x1, y1] = pts[i];
+    const cx = (x0 + x1) / 2;
+    d += ` C${cx.toFixed(1)},${y0.toFixed(1)} ${cx.toFixed(1)},${y1.toFixed(1)} ${x1.toFixed(1)},${y1.toFixed(1)}`;
+  }
+  const area = `${d} L${(padLeft + w).toFixed(1)},${baseY} L${padLeft},${baseY} Z`;
+  return { line: d, area };
+}
+
+function drawChart(h) {
+  const hArr = (h && h.length) ? h : [];
+  const dn = hArr.map(x => x.down_bps || 0);
+  const up = hArr.map(x => x.up_bps || 0);
+  const rawMax = Math.max(0, ...dn, ...up);
+  let max = rawMax > 0 ? rawMax * 1.15 : 1024 * 1024;
+  if (max < 1024) max = 1024;
+
+  const padLeft = 76, padRight = 10, padTop = 14, padBottom = 20;
+  const chartW = 720 - padLeft - padRight;
+  const chartH = 210 - padTop - padBottom;
+  const baseY = padTop + chartH;
+
+  const pd = makePath(dn.length >= 2 ? dn : [0, 0], padLeft, chartW, chartH, baseY, max);
+  const pu = makePath(up.length >= 2 ? up : [0, 0], padLeft, chartW, chartH, baseY, max);
+
+  $('peak').textContent = '峰值 ' + fmtR(rawMax);
+
+  const steps = [
+    { ratio: 1.0, val: max },
+    { ratio: 0.667, val: max * 0.667 },
+    { ratio: 0.333, val: max * 0.333 },
+    { ratio: 0.0, val: 0 }
+  ];
+
+  let gridSvg = '';
+  steps.forEach(st => {
+    const y = baseY - st.ratio * chartH;
+    const isZero = st.ratio === 0;
+    gridSvg += `<line x1="${padLeft}" y1="${y.toFixed(1)}" x2="${padLeft + chartW}" y2="${y.toFixed(1)}" stroke="${isZero ? '#cbd5e1' : '#e5e7eb'}" stroke-width="1" ${isZero ? '' : 'stroke-dasharray="3 3"'}/>`;
+    gridSvg += `<text x="${padLeft - 8}" y="${(y + 4).toFixed(1)}" text-anchor="end" font-family="ui-monospace,SFMono-Regular,Menlo,Consolas,monospace" font-size="11" fill="#6b7280">${fmtR(st.val)}</text>`;
+  });
+
+  $('chart').innerHTML = `
+    <defs>
+      <linearGradient id="gDn" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#2563eb" stop-opacity=".18"/><stop offset="100%" stop-color="#2563eb" stop-opacity=".01"/></linearGradient>
+      <linearGradient id="gUp" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#e11d48" stop-opacity=".15"/><stop offset="100%" stop-color="#e11d48" stop-opacity=".01"/></linearGradient>
+    </defs>
+    <g>${gridSvg}</g>
+    <g>
+      <path d="${pd.area}" fill="url(#gDn)"/>
+      <path d="${pd.line}" fill="none" stroke="#2563eb" stroke-width="2" stroke-linecap="round" vector-effect="non-scaling-stroke"/>
+      <path d="${pu.area}" fill="url(#gUp)"/>
+      <path d="${pu.line}" fill="none" stroke="#e11d48" stroke-width="2" stroke-linecap="round" vector-effect="non-scaling-stroke"/>
+    </g>
+  `;
+}
+
+/* 连接列表（保持顺序、按行增量更新） */
+let clients={},curIp='';
+function rowHtml(c){
+  const lim=c.down_limit_mbps>0||c.up_limit_mbps>0;
+  const status=c.is_online?`在线 · ${c.active_conns} 连接${c.avg_rtt_ms?` · ${c.avg_rtt_ms}ms`:''}`:`离线 · 最后连接 ${fmtT(c.last_seen)}`;
+  const loc=[c.location,c.isp].filter(Boolean).map(esc).join(' · ');
+  const meTag=c.is_admin?'<span class="tag t-me">本机</span>':'';
+  const protectedActs = '<button class="btn" title="当前操作端，受安全保护" disabled>本机保护</button>';
+  const normalActs = '<button class="btn" data-a="del">移除</button><button class="btn warn" data-a="ban">封禁</button>';
+  return `<div style="min-width:0"><div class="ip-line"><span class="dot" aria-hidden="true"></span><span class="ip" data-a="alias" title="点击添加/修改备注">${esc(c.ip)}</span>${c.alias?`<span class="alias" data-a="alias" title="点击修改备注">(${esc(c.alias)})</span>`:''}${meTag}${c.is_cdn?'<span class="tag t-cdn">CDN节点</span>':''}${lim?`<span class="tag t-lim">↓${c.down_limit_mbps||'∞'} ↑${c.up_limit_mbps||'∞'} Mbps</span>`:''}</div>
+    <div class="sub">${status}${loc?` · ${loc}`:''}</div></div>
+    <div class="m"><div class="dn">↓ ${fmtR(c.down_speed)}</div><div class="up">↑ ${fmtR(c.up_speed)}</div></div>
+    <div class="m"><div class="dn">↓ ${fmtB(c.total_down)}</div><div class="up">↑ ${fmtB(c.total_up)}</div></div>
+    <div class="acts"><button class="btn soft" data-a="limit">限速</button>${c.is_admin?protectedActs:normalActs}</div>`;
+}
+function findRowByIp(box, ip){
+  if (window.CSS && CSS.escape) return box.querySelector(`[data-ip="${CSS.escape(ip)}"]`);
+  for (const ch of box.children) { if (ch.dataset && ch.dataset.ip === ip) return ch; }
+  return null;
+}
+function renderList(list){
+  const box=$('list');
+  if(!list.length){box.innerHTML='<div class="empty">暂无连接</div>';return}
+  box.querySelector('.empty')?.remove();
+  const seen=new Set();
+  list.forEach((c,i)=>{
+    seen.add(c.ip);
+    let el=findRowByIp(box, c.ip);
+    if(!el){el=document.createElement('div');el.dataset.ip=c.ip}
+    el.className='row '+(c.is_online?'on':'off');
+    const h=rowHtml(c);if(el._h!==h){el.innerHTML=h;el._h=h}
+    if(box.children[i]!==el)box.insertBefore(el,box.children[i]||null);
+  });
+  [...box.children].forEach(el=>{if(!seen.has(el.dataset.ip))el.remove()});
+}
+$('list').addEventListener('click',e=>{
+  const b=e.target.closest('[data-a]');if(!b)return;
+  const ip=b.closest('.row').dataset.ip,a=b.dataset.a;
+  if(a==='limit')openLimit(ip);else if(a==='alias')openAlias(ip);else if(a==='del')delIp(ip);else banIp(ip);
+});
+function renderBans(list){
+  $('bcnt').textContent=list.length;
+  $('bans').innerHTML=list.length?list.map(b=>{
+    const bLoc=[b.location,b.isp].filter(Boolean).map(esc).join(' · ');
+    const rReason = b.reason ? `${bLoc?' · ':''}<span style="color:#b45309">${esc(b.reason)}</span>` : '';
+    const bExp = b.expires_at ? `${(bLoc||rReason)?' · ':''}至 ${fmtT(b.expires_at)}` : '';
+    return `<div class="ban"><div style="min-width:0"><div class="ip" style="font-size:13.5px;color:var(--warn);cursor:default;border:none">${esc(b.ip)}</div>
+    ${(bLoc||rReason||bExp)?`<div class="sub">${bLoc}${rReason}${bExp}</div>`:''}</div>
+    <button class="btn" data-unban="${esc(b.ip)}">解封</button></div>`;
+  }).join(''):'<div class="empty" style="padding:52px 0">暂无封禁记录</div>';
+}
+$('bans').addEventListener('click',e=>{
+  const b=e.target.closest('[data-unban]');
+  if(b) unban(b.dataset.unban);
+});
+
+let _refreshing=false, _refreshQueuedEpoch=null;
+async function refresh(force=false){
+  if(_refreshing){
+    if(force) _refreshQueuedEpoch=_authEpoch;
+    return;
+  }
+  const reqEpoch=_authEpoch;
+  _refreshing=true;
+  try{
+    const d=await api('overview');
+    if(reqEpoch!==_authEpoch) return;
+    const s=d.summary;
+    $('sOn').textContent=s.online_ips;$('sTotIps').textContent=d.clients.length;
+    $('sDn').textContent=fmtR(s.cur_down_bps);$('sUp').textContent=fmtR(s.cur_up_bps);
+    $('sTot').textContent=fmtB(s.total_traffic_bytes);
+    $('me').textContent=d.viewer_ip||'—';
+    window.currentViewerIp = d.viewer_ip || '';
+    $('cnt').textContent=d.clients.length;
+    clients={};d.clients.forEach(c=>clients[c.ip]=c);
+    renderList(d.clients);renderBans(d.blacklist);drawChart(d.history||[]);
+    $('login').classList.add('hidden');
+    $('boot').classList.add('hidden');
+    $('wrap').classList.remove('hidden');
+  }catch(e){
+    if(reqEpoch!==_authEpoch) return;
+    if($('wrap').classList.contains('hidden') && $('login').classList.contains('hidden')){
+      showBoot('连接失败，正在重试…');
+    }
+  }finally{
+    _refreshing=false;
+    const queuedEpoch=_refreshQueuedEpoch;
+    _refreshQueuedEpoch=null;
+    if(queuedEpoch!==null && queuedEpoch===_authEpoch){
+      refresh();
+    }
+  }
+}
+
+function openLimit(ip){curIp=ip;const c=clients[ip]||{};$('limIp').textContent=ip;
+  $('limDn').value=c.down_limit_mbps||0;$('limUp').value=c.up_limit_mbps||0;
+  const n=$('cdnLimNotice');if(n)n.style.display=c.is_cdn?'block':'none';
+  $('limitDlg').classList.remove('hidden');$('limDn').focus()}
+function closeLimit(){$('limitDlg').classList.add('hidden')}
+function openAlias(ip){curIp=ip;$('aliasIp').textContent=ip;$('aliasIn').value=(clients[ip]||{}).alias||'';
+  $('aliasDlg').classList.remove('hidden');$('aliasIn').focus();$('aliasIn').select()}
+function closeAlias(){$('aliasDlg').classList.add('hidden')}
+async function saveAlias(){
+  const alias=$('aliasIn').value.trim();
+  await api('client/alias',{ip:curIp,alias});toast(alias?'已备注':'已清除备注');closeAlias();
+  const row=findRowByIp($('list'), curIp);if(row)row._h='';refresh(true);
+}
+$('aliasIn').addEventListener('keydown',e=>{if(e.key==='Enter')saveAlias()});
+async function saveLimit(clear){
+  const dn=clear?0:Math.max(0,parseFloat($('limDn').value)||0),up=clear?0:Math.max(0,parseFloat($('limUp').value)||0);
+  const r=await api('client/limit',{ip:curIp,down_limit_mbps:dn,up_limit_mbps:up,quota_gb:(clients[curIp]||{}).quota_gb||0});
+  toast(r?.message || (dn||up?'已限速':'已解除'));closeLimit();refresh(true);
+}
+async function delIp(ip){
+  if((clients[ip] && clients[ip].is_admin) || (window.currentViewerIp && ip === window.currentViewerIp)){
+    alert('防误操作保护：该设备已被识别为您当前的管理端/本机，禁止删除自己！');
+    return;
+  }
+  const r=await api('client/delete',{ip});toast(r?.policy_sync_pending?'已移除；网络策略刷新待重试':(r?.message || '已移除'));refresh(true);
+}
+async function clearOffline(){const d=await api('client/delete',{ip:'OFFLINE'});toast(`已清理 ${d.deleted||0} 个${d.failed?`，${d.failed} 个清理失败`:''}${d.policy_sync_pending?'；网络策略刷新待重试':''}`);refresh(true)}
+async function resetAllTraffic(){
+  if(!confirm('确定要清空所有客户端的累计流量，重新开始计数吗？'))return;
+  await api('client/reset-traffic',{ip:'ALL'});
+  toast('已清空所有累计流量并重新计数');
+  $('list').querySelectorAll('.row').forEach(el=>el._h='');
+  refresh(true);
+}
+async function banIp(ip){
+  if((clients[ip] && clients[ip].is_admin) || (window.currentViewerIp && ip === window.currentViewerIp)){
+    alert('防误封保护：该设备已被识别为您当前的管理端/本机，禁止封禁自己！');
+    return;
+  }
+  const c=clients[ip]||{};
+  const name=c.alias?`${ip} (${c.alias})`:ip;
+  if(!confirm(`确定要封禁 ${name} 吗？\n（将阻断其代理连接）`))return;
+  const r=await api('blacklist/add',{ip});
+  toast(r?.message || '已封禁');
+  refresh(true);
+}
+async function manualBan(){
+  const ip=$('banIn').value.trim();
+  if(!ip)return;
+  if((clients[ip] && clients[ip].is_admin) || (window.currentViewerIp && ip === window.currentViewerIp)){
+    alert('防误封保护：该 IP 是您的管理端/本机，禁止封禁自己！');
+    return;
+  }
+  const r=await api('blacklist/add',{ip});
+  $('banIn').value='';
+  toast(r?.message || '已封禁');
+  refresh(true);
+}
+async function unban(ip){await api('blacklist/remove',{ip});toast('已解封');refresh(true)}
+function guardOperation(fn){
+  return async (...args)=>{
+    try { return await fn(...args); }
+    catch(err){ if(err.message!=='401' && !err.userNotified) toast('网络连接失败，请稍后重试'); }
+  };
+}
+for(const name of ['saveAlias','saveLimit','delIp','clearOffline','resetAllTraffic','banIp','manualBan','unban']){
+  window[name]=guardOperation(window[name]);
+}
+$('banIn').addEventListener('keydown',e=>{if(e.key==='Enter')manualBan()});
+['limDn','limUp'].forEach(id=>$(id).addEventListener('keydown',e=>{if(e.key==='Enter')saveLimit()}));
+document.addEventListener('keydown',e=>{if(e.key==='Escape'){closeLimit();closeAlias()}});
+
+renderBans([]);
+drawChart([]);
+(async()=>{
+  let stunTimedOut = false;
+  let raceTimer = null;
+  const stunPromise = detectLocalRealIP().catch(()=>'');
+  await Promise.race([
+    stunPromise,
+    new Promise(r=>{ raceTimer = setTimeout(()=>{ stunTimedOut = true; r(''); }, 650); })
+  ]);
+  clearTimeout(raceTimer);
+  if (stunTimedOut) {
+    stunPromise.then(ip => {
+      if (ip && $('login').classList.contains('hidden')) refresh(true);
+    });
+  }
+  await refresh(true);
+  if ($('login').classList.contains('hidden')) startPolling();
+})();
+</script>
+</body>
+</html>

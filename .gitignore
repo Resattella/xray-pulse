@@ -1,0 +1,17 @@
+__pycache__/
+*.py[cod]
+*$py.class
+.venv/
+venv/
+env/
+.env
+data/
+*.db
+*.db-journal
+*.db-wal
+*.db-shm
+initial_password.txt
+*.bak
+*.bak.*
+.DS_Store
+Thumbs.db
